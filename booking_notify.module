@@ -8,10 +8,22 @@ use Drupal\Core\Language\LanguageInterface;
 /**
  * Implements hook_form_alter() to alter the node add booking form.
  */
-function booking_notify_form_node_booking_form_alter(&$form, FormStateInterface $form_state, $form_id) {
-  // Add a submit handler to send emails.
-  $form['actions']['submit']['#submit'][] = 'booking_notify_presave';
-}
+function booking_notify_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+    if ($form_id == 'node_booking_form') {
+      // Add a submit handler to send emails.
+      $form['actions']['submit']['#submit'][] = 'booking_notify_presave';
+  
+      // Get the logger service.
+      $logger = \Drupal::service('logger.factory')->get('booking_notify');
+  
+      // Check if the email is sent.
+      if (booking_notify_presave($form, $form_state)) {
+        $logger->info('Email sent successfully.');
+      } else {
+        $logger->error('Failed to send email.');
+      }
+    }
+  }
 
 /**
  * Custom submit handler to handle presave logic and send emails.
