@@ -5,4 +5,3 @@ package: Booking
 core_version_requirement: ^9 || ^10
 dependencies:
   - node
-  - email
