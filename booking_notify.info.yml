@@ -1,0 +1,8 @@
+name: Booking Notify
+type: module
+description: Sends email notifications to user and admin on booking submission.
+package: Booking
+core_version_requirement: ^9 || ^10
+dependencies:
+  - node
+  - email
