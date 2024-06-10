@@ -30,7 +30,7 @@ function booking_notify_form_alter(&$form, FormStateInterface $form_state, $form
 /**
  * Custom submit handler to handle presave logic and send emails.
  */
-function booking_notify_presave(array &$form, FormStateInterface $form_state) {
+function booking_notify_presave(FormStateInterface $form_state) {
     // Get the node object from the form state.
     $node = $form_state->getFormObject()->getEntity();
   
@@ -44,26 +44,22 @@ function booking_notify_presave(array &$form, FormStateInterface $form_state) {
       $key = 'booking_notify';
       $user_email = $node->getOwner()->getEmail();
       $admin_email = \Drupal::config('system.site')->get('mail');
-      $params['message'] = t('Your booking has been received for @title.', ['@title' => $node->getTitle()]);
+  
+      // Fetch booking details.
+      $booking_title = $node->getTitle();
+      $start_date = $node->get('field_start_date')->value; // Replace 'field_start_date' with your field's machine name.
+      $end_date = $node->get('field_end_date')->value; // Replace 'field_end_date' with your field's machine name.
+      $room = $node->get('field_room')->value; // Replace 'field_room' with your field's machine name.
+  
+      $params['message'] = t('Your booking has been received for @title. It starts on @start_date and ends on @end_date in room @room.', [
+        '@title' => $booking_title,
+        '@start_date' => $start_date,
+        '@end_date' => $end_date,
+        '@room' => $room,
+      ]);
+  
       $langcode = \Drupal::currentUser()->getPreferredLangcode();
       $send = true;
-  
-      // Create an iCalendar event.
-      $event = new Event();
-      $event->setDtStart(new \DateTime('now'))
-            ->setDtEnd(new \DateTime('now + 1 hour'))
-            ->setSummary('Booking for ' . $node->getTitle());
-  
-      // Create a calendar and add the event.
-      $calendar = new Calendar('www.example.com');
-      $calendar->addComponent($event);
-  
-      // Add the iCalendar data as an attachment.
-      $params['attachments'][] = [
-        'filecontent' => $calendar->render(),
-        'filename' => 'booking.ics',
-        'filemime' => 'text/calendar',
-      ];
   
       // Send email to the user.
       $mailManager->mail($module, $key, $user_email, $langcode, $params, NULL, $send);
