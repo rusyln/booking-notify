@@ -4,6 +4,8 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\node\Entity\Node;
 use Drupal\Core\Mail\MailManagerInterface;
 use Drupal\Core\Language\LanguageInterface;
+use Eluceo\iCal\Component\Calendar;
+use Eluceo\iCal\Component\Event;
 
 /**
  * Implements hook_form_alter() to alter the node add booking form.
@@ -29,30 +31,47 @@ function booking_notify_form_alter(&$form, FormStateInterface $form_state, $form
  * Custom submit handler to handle presave logic and send emails.
  */
 function booking_notify_presave(array &$form, FormStateInterface $form_state) {
-  // Get the node object from the form state.
-  $node = $form_state->getFormObject()->getEntity();
-
-  // Ensure the node is of type 'booking'.
-  if ($node instanceof Node && $node->getType() === 'booking') {
-    // Perform any presave operations here if needed.
-    
-    // Send notification emails.
-    $mailManager = \Drupal::service('plugin.manager.mail');
-    $module = 'booking_notify';
-    $key = 'booking_notify';
-    $user_email = $node->getOwner()->getEmail();
-    $admin_email = \Drupal::config('system.site')->get('mail');
-    $params['message'] = t('Your booking has been received for @title.', ['@title' => $node->getTitle()]);
-    $langcode = \Drupal::currentUser()->getPreferredLangcode();
-    $send = true;
-
-    // Send email to the user.
-    $mailManager->mail($module, $key, $user_email, $langcode, $params, NULL, $send);
-
-    // Send email to the admin.
-    $mailManager->mail($module, $key, $admin_email, $langcode, $params, NULL, $send);
+    // Get the node object from the form state.
+    $node = $form_state->getFormObject()->getEntity();
+  
+    // Ensure the node is of type 'booking'.
+    if ($node instanceof Node && $node->getType() === 'booking') {
+      // Perform any presave operations here if needed.
+      
+      // Send notification emails.
+      $mailManager = \Drupal::service('plugin.manager.mail');
+      $module = 'booking_notify';
+      $key = 'booking_notify';
+      $user_email = $node->getOwner()->getEmail();
+      $admin_email = \Drupal::config('system.site')->get('mail');
+      $params['message'] = t('Your booking has been received for @title.', ['@title' => $node->getTitle()]);
+      $langcode = \Drupal::currentUser()->getPreferredLangcode();
+      $send = true;
+  
+      // Create an iCalendar event.
+      $event = new Event();
+      $event->setDtStart(new \DateTime('now'))
+            ->setDtEnd(new \DateTime('now + 1 hour'))
+            ->setSummary('Booking for ' . $node->getTitle());
+  
+      // Create a calendar and add the event.
+      $calendar = new Calendar('www.example.com');
+      $calendar->addComponent($event);
+  
+      // Add the iCalendar data as an attachment.
+      $params['attachments'][] = [
+        'filecontent' => $calendar->render(),
+        'filename' => 'booking.ics',
+        'filemime' => 'text/calendar',
+      ];
+  
+      // Send email to the user.
+      $mailManager->mail($module, $key, $user_email, $langcode, $params, NULL, $send);
+  
+      // Send email to the admin.
+      $mailManager->mail($module, $key, $admin_email, $langcode, $params, NULL, $send);
+    }
   }
-}
 
 /**
  * Implements hook_mail().
